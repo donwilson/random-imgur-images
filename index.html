@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<title>Random Imgur Images</title>
+	<style type='text/css'>
+		body { background-color: #dddddd; color: #000000; overflow-y: visible; }
+		
+		.warning { font-weight: bold; color: #ff0000; }
+		
+		#images { margin: 20px 0; }
+			#images a:visited { opacity: 0.3; display: inline-block; }
+			#images img { margin-right: 5px; border: 2px solid #000000; }
+				#images img:hover { border: 2px solid #ffffff; }
+	</style>
+</head>
+<body>
+	<center>
+		<p><button id="random">Load images</button>&nbsp; &nbsp;<span class="warning">NSFW</span></p>
+		
+		<p id="info"></p>
+		
+		<div id="images"></div> 
+	</center>
+	
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+	<script type='text/javascript'>
+		// taken from evilinternet(?), original source long gone
+		window.num_images = 120;
+		window.char_length = 5;
+		//window.char_length = 7;
+		
+		imgurcache = new Array();
+		
+		jQuery(document).ready(function($) {
+			var info_el = $("#info"),
+				images_el = $("#images");
+			
+			var Imgur = {
+				fetch: function(num) {
+					var self = this,
+						x;
+					
+					self.total = num;
+					self.done = 0;
+					self.failures = 0;
+					self.start =+ new Date;
+					
+					$(images_el).empty();
+					
+					for(x = 0; x < num; x++) {
+						self.hunt(function(id) {
+							self.done++;
+							
+							$(images_el).append("<a href=\"http://i.imgur.com/"+ id +".jpg\" target=\"_blank\" rel=\"noreferrer\"><img src=\"http://i.imgur.com/"+ id +"s.png\" height=\"110\" width=\"110\" /></a>");
+							
+							self.update();
+						});
+					}
+				},
+				update: function() {
+					var interval = (new Date - this.start);
+					
+					function speed(v) {
+						return (~~(v / (interval * 1e5))) / 100;
+					}
+					
+					$(info_el).html( ((this.done < this.total)?"Loading... "+ this.done +"/"+ this.total +" ("+ this.failures +" failures"+") ":"Done. ") + "["+ speed((this.failures + this.done)) +" req/s - "+ speed(this.done) +" img/s]");
+				},
+				
+				hunt: function(cb) {
+					var self = this,
+						id = self.random(window.char_length),
+						img = new Image;
+					
+					function fail() {
+						self.failures++;
+						self.update();
+						self.hunt(cb);
+					}
+					
+					self.update();
+					
+					img.src = "http://i.imgur.com/"+ id +"s.png";
+					
+					img.onload = function() {
+						if (((img.width == 198) && (img.height == 160)) || ((img.width == 161) && (img.height == 81))) {
+							// assume this is an imgur error image and retry
+							fail();
+						} else {
+							cb(id);
+						}
+					}
+					
+					img.onerror = fail;
+				},
+				random: function(len) {
+					var text = new Array(),
+						possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+						i;
+					
+					for (i = 0; i < len; i++) {
+						imgurchar = possible.charAt(Math.floor((Math.random() * possible.length)));
+						
+						if(-1 == text.indexOf(imgurchar)) {
+							text.push(imgurchar);
+						} else {
+							i--;
+						}
+					}
+					
+					text = text.join("");
+					
+					if(-1 == imgurcache.indexOf(text)) {
+						imgurcache.push(text);
+						
+						return text;
+					} else {
+						self.random(window.char_length);
+						
+						return false;
+					}
+				}
+			};
+			
+			$("#random").on('click', function() {
+				Imgur.fetch(window.num_images);
+			});
+		});
+	</script>
+</body>
+</html>
